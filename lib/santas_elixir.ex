@@ -7,9 +7,18 @@ defmodule SantasElixir do
     trips = load_trips
     #trips = Enum.filter(trips, fn(x) -> x[:trip_id] == 1 end)
 
-    merged = merge_trips_gifts(trips, gifts)
+    Benchmark.measure(fn -> merge_trips_gifts(trips, gifts) end)
+      |> IO.puts
 
-    WeightedReindeerWeariness.score(merged)
+    Benchmark.measure(fn -> quick_merge_trips_gifts(trips, gifts) end)
+      |> IO.puts
+
+    merged = quick_merge_trips_gifts(trips, gifts)
+
+    Benchmark.measure(fn -> WeightedReindeerWeariness.score(merged) end)
+      |> IO.puts
+
+
   end
 
   def load_gifts do
@@ -40,5 +49,20 @@ defmodule SantasElixir do
     Enum.map(trips, fn(trip) ->
       Map.merge(trip, Enum.find(gifts, fn(y) -> y[:gift_id] == trip[:gift_id] end))
     end)
+  end
+
+  def quick_merge_trips_gifts(trips, gifts) do
+    sorted_trips = Enum.with_index(trips) |> Enum.sort_by(fn(trip) -> elem(trip, 0)[:gift_id] end)
+
+    Enum.map(0..length(sorted_trips)-1, fn(x) ->
+      { Map.merge(elem(Enum.at(sorted_trips,x),0), Enum.at(gifts,x)),
+        elem(Enum.at(sorted_trips,x),1) }
+    end)
+      |> Enum.sort_by(fn(trip) ->
+        elem(trip, 1)
+      end)
+      |> Enum.map(fn(x) ->
+        elem(x, 0)
+      end)
   end
 end
